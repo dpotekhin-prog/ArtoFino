@@ -1,0 +1,14 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/server ./cmd/server/main.go"
+entrypoint = "./tmp/server"
+include_ext = ["go"]
+exclude_dir = ["docs", "tmp"]
+
+[log]
+time = true
+
+[serve]
+cmd = "./tmp/server"
