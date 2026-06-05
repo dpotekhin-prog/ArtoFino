@@ -1,35 +1,30 @@
 export PATH := $(PATH):$(HOME)/go/bin
 
-APP_NAME=server
+APP_NAME=backend/server
 MAIN=cmd/server/main.go
 DOCS_DIR=docs
 
-.PHONY: build run swag docker-up docker-down lint air
+.PHONY: env-up env-down swag run dev init-env
 
-# Build Go binary
-build:
-	go build -o $(APP_NAME) $(MAIN)
+# Check if backend/.env exists, if not - copy from .env.local
+init-env:
+	@test -f backend/.env || (cp backend/.env.local backend/.env && echo "Created backend/.env from .env.local")
 
-# Run backend locally
-run:
-	go run $(MAIN)
+# Start infrastructure (Databases + Keycloak) in Docker
+env-up:
+	docker compose up -d postgres_keycloak keycloak postgres_app mongo mongo_express
 
-# Generate Swagger docs
-swag:
-	swag init -g $(MAIN) -o $(DOCS_DIR)
-
-# Start docker-compose
-docker-up:
-	docker compose up -d --build
-
-# Stop docker-compose
-docker-down:
+# Stop infrastructure
+env-down:
 	docker compose down
 
-# Lint (requires golangci-lint)
-lint:
-	golangci-lint run
+# Generate fresh Swagger docs
+swag:
+	cd backend && swag init -g cmd/server/main.go -o docs
 
-# Hot reload with Air
-air:
-	air
+# Run Go server locally (clean and safe)
+run: init-env
+	cd backend && go run $(MAIN)
+
+# Run full development workflow
+dev: swag run
