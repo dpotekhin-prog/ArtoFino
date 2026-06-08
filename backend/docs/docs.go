@@ -31,8 +31,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.AdminPingResponse"
                         }
                     }
                 }
@@ -53,8 +52,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.AdminStatsResponse"
                         }
                     }
                 }
@@ -63,6 +61,9 @@ const docTemplate = `{
         "/hc": {
             "get": {
                 "description": "Returns OK if service is alive",
+                "produces": [
+                    "text/plain"
+                ],
                 "tags": [
                     "system"
                 ],
@@ -71,10 +72,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "type": "string"
                         }
                     }
                 }
@@ -82,18 +80,18 @@ const docTemplate = `{
         },
         "/lc": {
             "get": {
+                "produces": [
+                    "text/plain"
+                ],
                 "tags": [
                     "system"
                 ],
                 "summary": "Liveness check",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "ALIVE",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "type": "string"
                         }
                     }
                 }
@@ -101,18 +99,24 @@ const docTemplate = `{
         },
         "/rc": {
             "get": {
+                "produces": [
+                    "text/plain"
+                ],
                 "tags": [
                     "system"
                 ],
                 "summary": "Readiness check",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "READY",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "NOT READY",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -133,10 +137,62 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/handlers.UserProfileResponse"
                         }
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handlers.AdminPingResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "admin pong"
+                }
+            }
+        },
+        "handlers.AdminStatsResponse": {
+            "type": "object",
+            "properties": {
+                "activeOrders": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "totalRevenue": {
+                    "type": "number",
+                    "example": 1450.5
+                },
+                "totalUsers": {
+                    "type": "integer",
+                    "example": 154
+                }
+            }
+        },
+        "handlers.UserProfileResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "user@artofino.com"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "4321-abcd-1234"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "johndoe"
                 }
             }
         }

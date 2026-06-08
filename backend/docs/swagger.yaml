@@ -1,4 +1,41 @@
 basePath: /
+definitions:
+  handlers.AdminPingResponse:
+    properties:
+      message:
+        example: admin pong
+        type: string
+    type: object
+  handlers.AdminStatsResponse:
+    properties:
+      activeOrders:
+        example: 12
+        type: integer
+      totalRevenue:
+        example: 1450.5
+        type: number
+      totalUsers:
+        example: 154
+        type: integer
+    type: object
+  handlers.UserProfileResponse:
+    properties:
+      email:
+        example: user@artofino.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      id:
+        example: 4321-abcd-1234
+        type: string
+      lastName:
+        example: Doe
+        type: string
+      username:
+        example: johndoe
+        type: string
+    type: object
 host: localhost:9000
 info:
   contact: {}
@@ -12,8 +49,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.AdminPingResponse'
       security:
       - BearerAuth: []
       summary: Admin ping
@@ -25,8 +61,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.AdminStatsResponse'
       security:
       - BearerAuth: []
       summary: Admin stats
@@ -35,37 +70,41 @@ paths:
   /hc:
     get:
       description: Returns OK if service is alive
+      produces:
+      - text/plain
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            type: string
       summary: Health check
       tags:
       - system
   /lc:
     get:
+      produces:
+      - text/plain
       responses:
         "200":
-          description: OK
+          description: ALIVE
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            type: string
       summary: Liveness check
       tags:
       - system
   /rc:
     get:
+      produces:
+      - text/plain
       responses:
         "200":
-          description: OK
+          description: READY
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            type: string
+        "503":
+          description: NOT READY
+          schema:
+            type: string
       summary: Readiness check
       tags:
       - system
@@ -75,8 +114,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/handlers.UserProfileResponse'
       security:
       - BearerAuth: []
       summary: Get current user profile
