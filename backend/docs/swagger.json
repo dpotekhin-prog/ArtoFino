@@ -201,6 +201,63 @@
                 }
             }
         },
+        "/transfers/request": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allows a Partner to apply for hosting an art object at their event/location.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transfers"
+                ],
+                "summary": "Request art object for temporary use",
+                "parameters": [
+                    {
+                        "description": "Transfer request details",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TransferRequestInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TransferRequestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -346,6 +403,65 @@
                 "transactionId": {
                     "type": "string",
                     "example": "tx-abc-999888"
+                }
+            }
+        },
+        "handlers.TransferRequestInput": {
+            "type": "object",
+            "required": [
+                "durationDays",
+                "eventDetails",
+                "objectId"
+            ],
+            "properties": {
+                "durationDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 7
+                },
+                "eventDetails": {
+                    "type": "string",
+                    "example": "Corporate pop-up exhibition or apartment art party"
+                },
+                "objectId": {
+                    "type": "string",
+                    "example": "64a7b3e1f1d2c3a4b5"
+                }
+            }
+        },
+        "handlers.TransferRequestResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "eventDetails": {
+                    "type": "string",
+                    "example": "Corporate pop-up exhibition or apartment art party"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "fromHolderId": {
+                    "type": "string",
+                    "example": "partner-current-owner-uuid"
+                },
+                "objectId": {
+                    "type": "string",
+                    "example": "64a7b3e1f1d2c3a4b5"
+                },
+                "requesterId": {
+                    "type": "string",
+                    "example": "partner-host-uuid"
+                },
+                "status": {
+                    "description": "pending, approved, rejected, completed",
+                    "type": "string",
+                    "example": "pending"
+                },
+                "transferId": {
+                    "type": "string",
+                    "example": "tr-999111"
                 }
             }
         },

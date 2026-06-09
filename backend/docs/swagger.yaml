@@ -90,6 +90,49 @@ definitions:
         example: tx-abc-999888
         type: string
     type: object
+  handlers.TransferRequestInput:
+    properties:
+      durationDays:
+        example: 7
+        minimum: 1
+        type: integer
+      eventDetails:
+        example: Corporate pop-up exhibition or apartment art party
+        type: string
+      objectId:
+        example: 64a7b3e1f1d2c3a4b5
+        type: string
+    required:
+    - durationDays
+    - eventDetails
+    - objectId
+    type: object
+  handlers.TransferRequestResponse:
+    properties:
+      createdAt:
+        type: string
+      eventDetails:
+        example: Corporate pop-up exhibition or apartment art party
+        type: string
+      expiresAt:
+        type: string
+      fromHolderId:
+        example: partner-current-owner-uuid
+        type: string
+      objectId:
+        example: 64a7b3e1f1d2c3a4b5
+        type: string
+      requesterId:
+        example: partner-host-uuid
+        type: string
+      status:
+        description: pending, approved, rejected, completed
+        example: pending
+        type: string
+      transferId:
+        example: tr-999111
+        type: string
+    type: object
   handlers.UserProfileResponse:
     properties:
       email:
@@ -237,6 +280,42 @@ paths:
       summary: Buy a share in an art object
       tags:
       - transactions
+  /transfers/request:
+    post:
+      consumes:
+      - application/json
+      description: Allows a Partner to apply for hosting an art object at their event/location.
+      parameters:
+      - description: Transfer request details
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.TransferRequestInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TransferRequestResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Request art object for temporary use
+      tags:
+      - transfers
   /users/me:
     get:
       responses:
