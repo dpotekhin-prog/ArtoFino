@@ -86,3 +86,35 @@ func (h *TransfersHandler) RequestTransfer(c *gin.Context) {
 		CreatedAt:    time.Now(),
 	})
 }
+
+// TransferApprovalResponse describes the result of a transfer request being approved by the holder
+type TransferApprovalResponse struct {
+	TransferID string    `json:"transferId" example:"tr-888999"`
+	Status     string    `json:"status" example:"approved"`
+	ApprovedAt time.Time `json:"approvedAt"`
+}
+
+// ApproveTransfer godoc
+// @Summary      Approve a physical transfer request
+// @Description  Allows the current holder or owner of the art object to approve a pending temporary transfer request.
+// @Tags         transfers
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "Transfer ID"
+// @Success      200 {object} TransferApprovalResponse
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /transfers/{id}/approve [post]
+func (h *TransfersHandler) ApproveTransfer(c *gin.Context) {
+	transferID := c.Param("id")
+
+	// TODO: Verify via Postgres that the current authenticated user matches 'FromHolderID'
+	// TODO: Update transfer record status to 'approved'
+	// TODO: Trigger dynamic dailyGrowthRate recalculation inside MongoDB for this object
+
+	c.JSON(http.StatusOK, TransferApprovalResponse{
+		TransferID: transferID,
+		Status:     "approved",
+		ApprovedAt: time.Now(),
+	})
+}

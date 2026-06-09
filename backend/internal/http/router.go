@@ -44,6 +44,7 @@ func NewRouter(
 	usersHandler := handlers.NewUsersHandler()
 	transactionsHandler := handlers.NewTransactionsHandler()
 	transfersHandler := handlers.NewTransfersHandler()
+	authorsHandler := handlers.NewAuthorsHandler()
 
 	// /users/me доступен только роли "user"
 	protected.GET(
@@ -53,8 +54,9 @@ func NewRouter(
 	)
 
 	protected.POST("/transactions/buy", transactionsHandler.BuyShare)
-
 	protected.POST("/transfers/request", transfersHandler.RequestTransfer)
+	protected.POST("/transfers/:id/approve", transfersHandler.ApproveTransfer)
+	protected.POST("/authors/apply", authorsHandler.ApplyForCreator)
 
 	// --- Admin section ---
 	admin := protected.Group("/admin")
@@ -64,6 +66,8 @@ func NewRouter(
 
 	admin.GET("/stats", adminHandler.Stats)
 	admin.GET("/ping", adminHandler.Ping)
+
+	admin.POST("/applications/:id/approve", adminHandler.ApproveArtistApplication)
 
 	return r
 }

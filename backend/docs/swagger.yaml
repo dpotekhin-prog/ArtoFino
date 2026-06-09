@@ -1,5 +1,22 @@
 basePath: /
 definitions:
+  handlers.AdminApplicationApprovalResponse:
+    properties:
+      applicationId:
+        example: app-555666
+        type: string
+      roleAssigned:
+        example: artist
+        type: string
+      status:
+        example: approved
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        example: user-keycloak-uuid
+        type: string
+    type: object
   handlers.AdminPingResponse:
     properties:
       message:
@@ -129,6 +146,17 @@ definitions:
         example: tx-abc-999888
         type: string
     type: object
+  handlers.TransferApprovalResponse:
+    properties:
+      approvedAt:
+        type: string
+      status:
+        example: approved
+        type: string
+      transferId:
+        example: tr-888999
+        type: string
+    type: object
   handlers.TransferRequestInput:
     properties:
       durationDays:
@@ -197,6 +225,40 @@ info:
   title: ArtoFino Backend API
   version: "1.0"
 paths:
+  /admin/applications/{id}/approve:
+    post:
+      description: Allows an administrator to review and approve a pending creator
+        application, upgrading the user's system role.
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AdminApplicationApprovalResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve an artist application
+      tags:
+      - admin
   /admin/ping:
     get:
       responses:
@@ -356,6 +418,40 @@ paths:
       summary: Buy a share in an art object
       tags:
       - transactions
+  /transfers/{id}/approve:
+    post:
+      description: Allows the current holder or owner of the art object to approve
+        a pending temporary transfer request.
+      parameters:
+      - description: Transfer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TransferApprovalResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve a physical transfer request
+      tags:
+      - transfers
   /transfers/request:
     post:
       consumes:

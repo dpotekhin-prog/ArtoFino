@@ -54,3 +54,28 @@ func TestRequestTransfer_Success(t *testing.T) {
 	assert.NotEmpty(t, response.ExpiresAt)
 	assert.NotEmpty(t, response.CreatedAt)
 }
+
+func TestApproveTransfer_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.Default()
+	h := NewTransfersHandler()
+	r.POST("/transfers/:id/approve", h.ApproveTransfer)
+
+	targetTransferID := "tr-test-123"
+
+	req, _ := http.NewRequest(http.MethodPost, "/transfers/"+targetTransferID+"/approve", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response TransferApprovalResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	assert.Equal(t, targetTransferID, response.TransferID)
+	assert.Equal(t, "approved", response.Status)
+	assert.NotEmpty(t, response.ApprovedAt)
+}

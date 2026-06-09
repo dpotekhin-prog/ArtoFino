@@ -9,6 +9,58 @@
     "host": "localhost:9000",
     "basePath": "/",
     "paths": {
+        "/admin/applications/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allows an administrator to review and approve a pending creator application, upgrading the user's system role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Approve an artist application",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdminApplicationApprovalResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/ping": {
             "get": {
                 "security": [
@@ -315,6 +367,58 @@
                 }
             }
         },
+        "/transfers/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allows the current holder or owner of the art object to approve a pending temporary transfer request.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transfers"
+                ],
+                "summary": "Approve a physical transfer request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transfer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TransferApprovalResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -338,6 +442,30 @@
         }
     },
     "definitions": {
+        "handlers.AdminApplicationApprovalResponse": {
+            "type": "object",
+            "properties": {
+                "applicationId": {
+                    "type": "string",
+                    "example": "app-555666"
+                },
+                "roleAssigned": {
+                    "type": "string",
+                    "example": "artist"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "approved"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "user-keycloak-uuid"
+                }
+            }
+        },
         "handlers.AdminPingResponse": {
             "type": "object",
             "properties": {
@@ -515,6 +643,22 @@
                 "transactionId": {
                     "type": "string",
                     "example": "tx-abc-999888"
+                }
+            }
+        },
+        "handlers.TransferApprovalResponse": {
+            "type": "object",
+            "properties": {
+                "approvedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "approved"
+                },
+                "transferId": {
+                    "type": "string",
+                    "example": "tr-888999"
                 }
             }
         },
