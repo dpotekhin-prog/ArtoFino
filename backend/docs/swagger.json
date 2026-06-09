@@ -51,6 +51,63 @@
                 }
             }
         },
+        "/authors/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allows a registered user to submit portfolio and social links to get vetted and upgraded to the 'artist' role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "authors"
+                ],
+                "summary": "Apply for Artist (Creator) status",
+                "parameters": [
+                    {
+                        "description": "Artist application data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreatorApplicationInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreatorApplicationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/hc": {
             "get": {
                 "description": "Returns OK if service is alive",
@@ -367,6 +424,61 @@
                     "maximum": 10,
                     "minimum": 1,
                     "example": 5
+                }
+            }
+        },
+        "handlers.CreatorApplicationInput": {
+            "type": "object",
+            "required": [
+                "bio",
+                "portfolioUrl",
+                "socialLinks"
+            ],
+            "properties": {
+                "bio": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Contemporary oil painter based in Prague, focusing on urban landscapes."
+                },
+                "portfolioUrl": {
+                    "type": "string",
+                    "example": "https://behance.net/my-art-portfolio"
+                },
+                "socialLinks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['https://instagram.com/artist_handle']"
+                    ]
+                }
+            }
+        },
+        "handlers.CreatorApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "applicationId": {
+                    "type": "string",
+                    "example": "app-111222"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "portfolioUrl": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending, approved, rejected",
+                    "type": "string",
+                    "example": "pending"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "user-keycloak-uuid"
                 }
             }
         },

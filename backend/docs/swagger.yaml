@@ -64,6 +64,45 @@ definitions:
     - objectId
     - sharePct
     type: object
+  handlers.CreatorApplicationInput:
+    properties:
+      bio:
+        example: Contemporary oil painter based in Prague, focusing on urban landscapes.
+        maxLength: 500
+        type: string
+      portfolioUrl:
+        example: https://behance.net/my-art-portfolio
+        type: string
+      socialLinks:
+        example:
+        - '[''https://instagram.com/artist_handle'']'
+        items:
+          type: string
+        type: array
+    required:
+    - bio
+    - portfolioUrl
+    - socialLinks
+    type: object
+  handlers.CreatorApplicationResponse:
+    properties:
+      applicationId:
+        example: app-111222
+        type: string
+      bio:
+        type: string
+      createdAt:
+        type: string
+      portfolioUrl:
+        type: string
+      status:
+        description: pending, approved, rejected
+        example: pending
+        type: string
+      userId:
+        example: user-keycloak-uuid
+        type: string
+    type: object
   handlers.TransactionResponse:
     properties:
       amountPaid:
@@ -182,6 +221,43 @@ paths:
       summary: Admin stats
       tags:
       - admin
+  /authors/apply:
+    post:
+      consumes:
+      - application/json
+      description: Allows a registered user to submit portfolio and social links to
+        get vetted and upgraded to the 'artist' role.
+      parameters:
+      - description: Artist application data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreatorApplicationInput'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/handlers.CreatorApplicationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Apply for Artist (Creator) status
+      tags:
+      - authors
   /hc:
     get:
       description: Returns OK if service is alive
