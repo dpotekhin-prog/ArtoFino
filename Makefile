@@ -20,7 +20,7 @@ env-down:
 
 # Generate fresh Swagger docs
 swag:
-	cd backend && swag init -g cmd/server/main.go -o docs
+	cd backend && swag init -g cmd/server/main.go -o docs -p camelcase
 
 # Run Go server locally (clean and safe)
 run: init-env
@@ -28,3 +28,11 @@ run: init-env
 
 # Run full development workflow
 dev: swag run
+
+# Run all backend tests
+test:
+	cd backend && go test -v ./...
+
+# Run a specific test (Usage: make test-target name=TestGetArtObject_PriceCalculation)
+test-target:
+	cd backend && go test -v ./... -run $(name)

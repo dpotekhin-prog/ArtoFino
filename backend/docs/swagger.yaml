@@ -18,6 +18,78 @@ definitions:
         example: 154
         type: integer
     type: object
+  handlers.ArtObjectResponse:
+    properties:
+      artistId:
+        example: artist-4321
+        type: string
+      basePrice:
+        example: 5000
+        type: number
+      country:
+        example: CZ
+        type: string
+      createdAt:
+        type: string
+      currency:
+        example: EUR
+        type: string
+      currentHolderId:
+        example: partner-9876
+        type: string
+      currentPrice:
+        example: 5075.5
+        type: number
+      dailyGrowthRate:
+        example: 0.0001
+        type: number
+      id:
+        example: 64a7b3e1f1d2c3a4b5
+        type: string
+      title:
+        example: Sunset over Prague
+        type: string
+    type: object
+  handlers.BuyShareInput:
+    properties:
+      objectId:
+        example: 64a7b3e1f1d2c3a4b5
+        type: string
+      sharePct:
+        example: 5
+        maximum: 10
+        minimum: 1
+        type: number
+    required:
+    - objectId
+    - sharePct
+    type: object
+  handlers.TransactionResponse:
+    properties:
+      amountPaid:
+        example: 253.75
+        type: number
+      buyerId:
+        example: user-buyer-uuid
+        type: string
+      createdAt:
+        type: string
+      currency:
+        example: EUR
+        type: string
+      objectId:
+        example: 64a7b3e1f1d2c3a4b5
+        type: string
+      sellerId:
+        example: artist-seller-uuid
+        type: string
+      sharePct:
+        example: 5
+        type: number
+      transactionId:
+        example: tx-abc-999888
+        type: string
+    type: object
   handlers.UserProfileResponse:
     properties:
       email:
@@ -92,6 +164,26 @@ paths:
       summary: Liveness check
       tags:
       - system
+  /objects/{id}:
+    get:
+      description: Returns art object data with current price calculated based on
+        daily linear growth, custom currency and dynamic rate
+      parameters:
+      - description: Object ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ArtObjectResponse'
+      summary: Get art object with dynamic price
+      tags:
+      - objects
   /rc:
     get:
       produces:
@@ -108,6 +200,43 @@ paths:
       summary: Readiness check
       tags:
       - system
+  /transactions/buy:
+    post:
+      consumes:
+      - application/json
+      description: Purchase between 1% and 10% of an art object. Price is locked at
+        the current calculated rate using the linear growth formula.
+      parameters:
+      - description: Purchase data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.BuyShareInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Buy a share in an art object
+      tags:
+      - transactions
   /users/me:
     get:
       responses:

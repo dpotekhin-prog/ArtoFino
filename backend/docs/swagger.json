@@ -90,6 +90,35 @@
                 }
             }
         },
+        "/objects/{id}": {
+            "get": {
+                "description": "Returns art object data with current price calculated based on daily linear growth, custom currency and dynamic rate",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "objects"
+                ],
+                "summary": "Get art object with dynamic price",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ArtObjectResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/rc": {
             "get": {
                 "produces": [
@@ -110,6 +139,63 @@
                         "description": "NOT READY",
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/buy": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Purchase between 1% and 10% of an art object. Price is locked at the current calculated rate using the linear growth formula.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Buy a share in an art object",
+                "parameters": [
+                    {
+                        "description": "Purchase data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.BuyShareInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.TransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -161,6 +247,105 @@
                 "totalUsers": {
                     "type": "integer",
                     "example": 154
+                }
+            }
+        },
+        "handlers.ArtObjectResponse": {
+            "type": "object",
+            "properties": {
+                "artistId": {
+                    "type": "string",
+                    "example": "artist-4321"
+                },
+                "basePrice": {
+                    "type": "number",
+                    "example": 5000
+                },
+                "country": {
+                    "type": "string",
+                    "example": "CZ"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "EUR"
+                },
+                "currentHolderId": {
+                    "type": "string",
+                    "example": "partner-9876"
+                },
+                "currentPrice": {
+                    "type": "number",
+                    "example": 5075.5
+                },
+                "dailyGrowthRate": {
+                    "type": "number",
+                    "example": 0.0001
+                },
+                "id": {
+                    "type": "string",
+                    "example": "64a7b3e1f1d2c3a4b5"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Sunset over Prague"
+                }
+            }
+        },
+        "handlers.BuyShareInput": {
+            "type": "object",
+            "required": [
+                "objectId",
+                "sharePct"
+            ],
+            "properties": {
+                "objectId": {
+                    "type": "string",
+                    "example": "64a7b3e1f1d2c3a4b5"
+                },
+                "sharePct": {
+                    "type": "number",
+                    "maximum": 10,
+                    "minimum": 1,
+                    "example": 5
+                }
+            }
+        },
+        "handlers.TransactionResponse": {
+            "type": "object",
+            "properties": {
+                "amountPaid": {
+                    "type": "number",
+                    "example": 253.75
+                },
+                "buyerId": {
+                    "type": "string",
+                    "example": "user-buyer-uuid"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "EUR"
+                },
+                "objectId": {
+                    "type": "string",
+                    "example": "64a7b3e1f1d2c3a4b5"
+                },
+                "sellerId": {
+                    "type": "string",
+                    "example": "artist-seller-uuid"
+                },
+                "sharePct": {
+                    "type": "number",
+                    "example": 5
+                },
+                "transactionId": {
+                    "type": "string",
+                    "example": "tx-abc-999888"
                 }
             }
         },

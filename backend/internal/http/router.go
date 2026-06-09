@@ -31,6 +31,9 @@ func NewRouter(
 		})
 	})
 
+	objectsHandler := handlers.NewObjectsHandler()
+	r.GET("/objects/:id", objectsHandler.GetArtObject)
+
 	// --- Auth middleware ---
 	authMw := middleware.NewAuthMiddleware(kc)
 
@@ -39,6 +42,7 @@ func NewRouter(
 	protected.Use(authMw.Handle)
 
 	usersHandler := handlers.NewUsersHandler()
+	transactionsHandler := handlers.NewTransactionsHandler()
 
 	// /users/me доступен только роли "user"
 	protected.GET(
@@ -46,6 +50,8 @@ func NewRouter(
 		middleware.RequireRole("user", cfg.Keycloak.ClientID),
 		usersHandler.Me,
 	)
+
+	protected.POST("/transactions/buy", transactionsHandler.BuyShare)
 
 	// --- Admin section ---
 	admin := protected.Group("/admin")
