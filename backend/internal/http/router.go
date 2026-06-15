@@ -11,12 +11,13 @@ import (
 	"ArtoFino/backend/internal/config"
 	"ArtoFino/backend/internal/http/handlers"
 	"ArtoFino/backend/internal/http/middleware"
+	mongorepo "ArtoFino/backend/internal/mongo" // Импортируем под алиасом, чтобы не было конфликта с аргументом mongo
 )
 
 // NewRouter initializes all HTTP routes and dependencies.
 func NewRouter(
 	pg *gorm.DB,
-	mongo *mongo.Client,
+	mongoClient *mongo.Client, // Переименовали аргумент в mongoClient для ясности
 	cfg config.Config,
 	kc *auth.KeycloakClient,
 	system *handlers.SystemHandler,
@@ -31,7 +32,12 @@ func NewRouter(
 		})
 	})
 
-	objectsHandler := handlers.NewObjectsHandler()
+	// Инициализируем базу данных MongoDB и репозиторий объектов
+	mongoDB := mongoClient.Database("artofino")
+	objectsRepo := mongorepo.NewObjectsRepository(mongoDB)
+
+	// Передаем репозиторий в хэндлер объектов
+	objectsHandler := handlers.NewObjectsHandler(objectsRepo)
 	r.GET("/objects/:id", objectsHandler.GetArtObject)
 
 	// --- Auth middleware ---
