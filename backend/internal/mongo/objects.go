@@ -61,3 +61,16 @@ func (r *ObjectsRepository) FindByID(ctx context.Context, idStr string) (*Object
 
 	return &obj, nil
 }
+
+func (r *ObjectsRepository) Create(ctx context.Context, obj *Object) error {
+	if obj.ID.IsZero() {
+		obj.ID = primitive.NewObjectID()
+	}
+	if obj.CreatedAt.IsZero() {
+		obj.CreatedAt = time.Now()
+	}
+	obj.UpdatedAt = time.Now()
+
+	_, err := r.collection.InsertOne(ctx, obj)
+	return err
+}

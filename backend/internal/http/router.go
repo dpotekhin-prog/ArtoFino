@@ -68,12 +68,13 @@ func NewRouter(
 	admin := protected.Group("/admin")
 	admin.Use(middleware.RequireRole("admin", cfg.Keycloak.ClientID))
 
-	adminHandler := handlers.NewAdminHandler()
+	adminHandler := handlers.NewAdminHandler(objectsRepo)
 
 	admin.GET("/stats", adminHandler.Stats)
 	admin.GET("/ping", adminHandler.Ping)
 
 	admin.POST("/applications/:id/approve", adminHandler.ApproveArtistApplication)
+	admin.POST("/objects", adminHandler.CreateArtObject)
 
 	return r
 }

@@ -1,72 +1,5 @@
 basePath: /
 definitions:
-  handlers.AdminApplicationApprovalResponse:
-    properties:
-      applicationId:
-        example: app-555666
-        type: string
-      roleAssigned:
-        example: artist
-        type: string
-      status:
-        example: approved
-        type: string
-      updatedAt:
-        type: string
-      userId:
-        example: user-keycloak-uuid
-        type: string
-    type: object
-  handlers.AdminPingResponse:
-    properties:
-      message:
-        example: admin pong
-        type: string
-    type: object
-  handlers.AdminStatsResponse:
-    properties:
-      activeOrders:
-        example: 12
-        type: integer
-      totalRevenue:
-        example: 1450.5
-        type: number
-      totalUsers:
-        example: 154
-        type: integer
-    type: object
-  handlers.ArtObjectResponse:
-    properties:
-      artistId:
-        example: artist-4321
-        type: string
-      basePrice:
-        example: 5000
-        type: number
-      country:
-        example: CZ
-        type: string
-      createdAt:
-        type: string
-      currency:
-        example: EUR
-        type: string
-      currentHolderId:
-        example: partner-9876
-        type: string
-      currentPrice:
-        example: 5075.5
-        type: number
-      dailyGrowthRate:
-        example: 0.0001
-        type: number
-      id:
-        example: 64a7b3e1f1d2c3a4b5
-        type: string
-      title:
-        example: Sunset over Prague
-        type: string
-    type: object
   handlers.BuyShareInput:
     properties:
       objectId:
@@ -80,6 +13,41 @@ definitions:
     required:
     - objectId
     - sharePct
+    type: object
+  handlers.CreateObjectInput:
+    properties:
+      artistId:
+        example: artist-uuid-111
+        type: string
+      basePrice:
+        example: 5000
+        type: number
+      currency:
+        example: EUR
+        type: string
+      dailyGrowthRate:
+        example: 0.00025
+        type: number
+      description:
+        example: An incredible modern oil canvas exploration.
+        type: string
+      tags:
+        example:
+        - '[''oil'''
+        - ' ''canvas'''
+        - ' ''modern'']'
+        items:
+          type: string
+        type: array
+      title:
+        example: Symphony of Lights
+        type: string
+    required:
+    - artistId
+    - basePrice
+    - currency
+    - dailyGrowthRate
+    - title
     type: object
   handlers.CreatorApplicationInput:
     properties:
@@ -218,6 +186,33 @@ definitions:
         example: johndoe
         type: string
     type: object
+  mongo.Object:
+    properties:
+      basePrice:
+        type: number
+      createdAt:
+        type: string
+      currency:
+        type: string
+      currentHolderId:
+        type: string
+      dailyGrowthRate:
+        type: number
+      description:
+        type: string
+      id:
+        type: string
+      ownerUserId:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
 host: localhost:9000
 info:
   contact: {}
@@ -225,62 +220,41 @@ info:
   title: ArtoFino Backend API
   version: "1.0"
 paths:
-  /admin/applications/{id}/approve:
+  /admin/objects:
     post:
-      description: Allows an administrator to review and approve a pending creator
-        application, upgrading the user's system role.
+      consumes:
+      - application/json
+      description: Allows administrators to mint a new digital art object metadata
+        entry inside MongoDB with base pricing configuration.
       parameters:
-      - description: Application ID
-        in: path
-        name: id
+      - description: Art Object configuration state
+        in: body
+        name: input
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/handlers.CreateObjectInput'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/handlers.AdminApplicationApprovalResponse'
+            $ref: '#/definitions/mongo.Object'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "401":
           description: Unauthorized
           schema:
             additionalProperties:
               type: string
             type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       security:
       - BearerAuth: []
-      summary: Approve an artist application
-      tags:
-      - admin
-  /admin/ping:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.AdminPingResponse'
-      security:
-      - BearerAuth: []
-      summary: Admin ping
-      tags:
-      - admin
-  /admin/stats:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.AdminStatsResponse'
-      security:
-      - BearerAuth: []
-      summary: Admin stats
+      summary: Create a new art object asset
       tags:
       - admin
   /authors/apply:
@@ -345,26 +319,6 @@ paths:
       summary: Liveness check
       tags:
       - system
-  /objects/{id}:
-    get:
-      description: Returns art object data with current price calculated based on
-        daily linear growth, custom currency and dynamic rate
-      parameters:
-      - description: Object ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.ArtObjectResponse'
-      summary: Get art object with dynamic price
-      tags:
-      - objects
   /rc:
     get:
       produces:

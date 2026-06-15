@@ -9,35 +9,49 @@
     "host": "localhost:9000",
     "basePath": "/",
     "paths": {
-        "/admin/applications/{id}/approve": {
+        "/admin/objects": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Allows an administrator to review and approve a pending creator application, upgrading the user's system role.",
+                "description": "Allows administrators to mint a new digital art object metadata entry inside MongoDB with base pricing configuration.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "admin"
                 ],
-                "summary": "Approve an artist application",
+                "summary": "Create a new art object asset",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "description": "Art Object configuration state",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateObjectInput"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.AdminApplicationApprovalResponse"
+                            "$ref": "#/definitions/mongo.Object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "401": {
@@ -47,57 +61,6 @@
                             "additionalProperties": {
                                 "type": "string"
                             }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/ping": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Admin ping",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.AdminPingResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "Admin stats",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.AdminStatsResponse"
                         }
                     }
                 }
@@ -194,35 +157,6 @@
                         "description": "ALIVE",
                         "schema": {
                             "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/objects/{id}": {
-            "get": {
-                "description": "Returns art object data with current price calculated based on daily linear growth, custom currency and dynamic rate",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "objects"
-                ],
-                "summary": "Get art object with dynamic price",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Object ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ArtObjectResponse"
                         }
                     }
                 }
@@ -442,100 +376,6 @@
         }
     },
     "definitions": {
-        "handlers.AdminApplicationApprovalResponse": {
-            "type": "object",
-            "properties": {
-                "applicationId": {
-                    "type": "string",
-                    "example": "app-555666"
-                },
-                "roleAssigned": {
-                    "type": "string",
-                    "example": "artist"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "approved"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string",
-                    "example": "user-keycloak-uuid"
-                }
-            }
-        },
-        "handlers.AdminPingResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "admin pong"
-                }
-            }
-        },
-        "handlers.AdminStatsResponse": {
-            "type": "object",
-            "properties": {
-                "activeOrders": {
-                    "type": "integer",
-                    "example": 12
-                },
-                "totalRevenue": {
-                    "type": "number",
-                    "example": 1450.5
-                },
-                "totalUsers": {
-                    "type": "integer",
-                    "example": 154
-                }
-            }
-        },
-        "handlers.ArtObjectResponse": {
-            "type": "object",
-            "properties": {
-                "artistId": {
-                    "type": "string",
-                    "example": "artist-4321"
-                },
-                "basePrice": {
-                    "type": "number",
-                    "example": 5000
-                },
-                "country": {
-                    "type": "string",
-                    "example": "CZ"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "EUR"
-                },
-                "currentHolderId": {
-                    "type": "string",
-                    "example": "partner-9876"
-                },
-                "currentPrice": {
-                    "type": "number",
-                    "example": 5075.5
-                },
-                "dailyGrowthRate": {
-                    "type": "number",
-                    "example": 0.0001
-                },
-                "id": {
-                    "type": "string",
-                    "example": "64a7b3e1f1d2c3a4b5"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Sunset over Prague"
-                }
-            }
-        },
         "handlers.BuyShareInput": {
             "type": "object",
             "required": [
@@ -552,6 +392,53 @@
                     "maximum": 10,
                     "minimum": 1,
                     "example": 5
+                }
+            }
+        },
+        "handlers.CreateObjectInput": {
+            "type": "object",
+            "required": [
+                "artistId",
+                "basePrice",
+                "currency",
+                "dailyGrowthRate",
+                "title"
+            ],
+            "properties": {
+                "artistId": {
+                    "type": "string",
+                    "example": "artist-uuid-111"
+                },
+                "basePrice": {
+                    "type": "number",
+                    "example": 5000
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "EUR"
+                },
+                "dailyGrowthRate": {
+                    "type": "number",
+                    "example": 0.00025
+                },
+                "description": {
+                    "type": "string",
+                    "example": "An incredible modern oil canvas exploration."
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['oil'",
+                        " 'canvas'",
+                        " 'modern']"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Symphony of Lights"
                 }
             }
         },
@@ -743,6 +630,47 @@
                 "username": {
                     "type": "string",
                     "example": "johndoe"
+                }
+            }
+        },
+        "mongo.Object": {
+            "type": "object",
+            "properties": {
+                "basePrice": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "currentHolderId": {
+                    "type": "string"
+                },
+                "dailyGrowthRate": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         }
