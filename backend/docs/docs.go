@@ -201,7 +201,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Purchase between 1% and 10% of an art object. Price is locked at the current calculated rate using the linear growth formula.",
+                "description": "Purchase a fractional percentage of an art object. Price is locked and calculated dynamically using the live growth formula from MongoDB.",
                 "consumes": [
                     "application/json"
                 ],
@@ -214,7 +214,7 @@ const docTemplate = `{
                 "summary": "Buy a share in an art object",
                 "parameters": [
                     {
-                        "description": "Purchase data",
+                        "description": "Purchase percentage details",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -239,8 +239,17 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -392,7 +401,7 @@ const docTemplate = `{
             "properties": {
                 "objectId": {
                     "type": "string",
-                    "example": "64a7b3e1f1d2c3a4b5"
+                    "example": "64a7b3e1f1d2c3a4b5777777"
                 },
                 "sharePct": {
                     "type": "number",
@@ -524,7 +533,7 @@ const docTemplate = `{
                 },
                 "objectId": {
                     "type": "string",
-                    "example": "64a7b3e1f1d2c3a4b5"
+                    "example": "64a7b3e1f1d2c3a4b5777777"
                 },
                 "sellerId": {
                     "type": "string",
@@ -536,7 +545,7 @@ const docTemplate = `{
                 },
                 "transactionId": {
                     "type": "string",
-                    "example": "tx-abc-999888"
+                    "example": "uuid-string-here"
                 }
             }
         },

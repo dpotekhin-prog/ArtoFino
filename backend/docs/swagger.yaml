@@ -3,7 +3,7 @@ definitions:
   handlers.BuyShareInput:
     properties:
       objectId:
-        example: 64a7b3e1f1d2c3a4b5
+        example: 64a7b3e1f1d2c3a4b5777777
         type: string
       sharePct:
         example: 5
@@ -102,7 +102,7 @@ definitions:
         example: EUR
         type: string
       objectId:
-        example: 64a7b3e1f1d2c3a4b5
+        example: 64a7b3e1f1d2c3a4b5777777
         type: string
       sellerId:
         example: artist-seller-uuid
@@ -111,7 +111,7 @@ definitions:
         example: 5
         type: number
       transactionId:
-        example: tx-abc-999888
+        example: uuid-string-here
         type: string
     type: object
   handlers.TransferApprovalResponse:
@@ -339,10 +339,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Purchase between 1% and 10% of an art object. Price is locked at
-        the current calculated rate using the linear growth formula.
+      description: Purchase a fractional percentage of an art object. Price is locked
+        and calculated dynamically using the live growth formula from MongoDB.
       parameters:
-      - description: Purchase data
+      - description: Purchase percentage details
         in: body
         name: input
         required: true
@@ -361,8 +361,14 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "401":
-          description: Unauthorized
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string

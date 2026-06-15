@@ -9,15 +9,16 @@ import (
 
 	"ArtoFino/backend/internal/auth"
 	"ArtoFino/backend/internal/config"
+	pgrepo "ArtoFino/backend/internal/db"
 	"ArtoFino/backend/internal/http/handlers"
 	"ArtoFino/backend/internal/http/middleware"
-	mongorepo "ArtoFino/backend/internal/mongo" // Импортируем под алиасом, чтобы не было конфликта с аргументом mongo
+	mongorepo "ArtoFino/backend/internal/mongo"
 )
 
 // NewRouter initializes all HTTP routes and dependencies.
 func NewRouter(
 	pg *gorm.DB,
-	mongoClient *mongo.Client, // Переименовали аргумент в mongoClient для ясности
+	mongoClient *mongo.Client,
 	cfg config.Config,
 	kc *auth.KeycloakClient,
 	system *handlers.SystemHandler,
@@ -32,27 +33,33 @@ func NewRouter(
 		})
 	})
 
-	// Инициализируем базу данных MongoDB и репозиторий объектов
+	// --- Initialize Repositories ---
+	// 1. MongoDB Setup
 	mongoDB := mongoClient.Database("artofino")
 	objectsRepo := mongorepo.NewObjectsRepository(mongoDB)
 
-	// Передаем репозиторий в хэндлер объектов
+	// 2. PostgreSQL Setup
+	transactionsPostgresRepo := pgrepo.NewTransactionsRepository(pg)
+
+	// --- Initialize Handlers with Dependencies ---
 	objectsHandler := handlers.NewObjectsHandler(objectsRepo)
+	usersHandler := handlers.NewUsersHandler()
+	transactionsHandler := handlers.NewTransactionsHandler(objectsRepo, transactionsPostgresRepo)
+	transfersHandler := handlers.NewTransfersHandler()
+	authorsHandler := handlers.NewAuthorsHandler()
+	adminHandler := handlers.NewAdminHandler(objectsRepo)
+
+	// --- Public Routes ---
 	r.GET("/objects/:id", objectsHandler.GetArtObject)
 
-	// --- Auth middleware ---
+	// --- Auth Middleware ---
 	authMw := middleware.NewAuthMiddleware(kc)
 
-	// --- Protected routes ---
+	// --- Protected Routes ---
 	protected := r.Group("/")
 	protected.Use(authMw.Handle)
 
-	usersHandler := handlers.NewUsersHandler()
-	transactionsHandler := handlers.NewTransactionsHandler()
-	transfersHandler := handlers.NewTransfersHandler()
-	authorsHandler := handlers.NewAuthorsHandler()
-
-	// /users/me доступен только роли "user"
+	// /users/me available only to "user" role
 	protected.GET(
 		"/users/me",
 		middleware.RequireRole("user", cfg.Keycloak.ClientID),
@@ -64,15 +71,12 @@ func NewRouter(
 	protected.POST("/transfers/:id/approve", transfersHandler.ApproveTransfer)
 	protected.POST("/authors/apply", authorsHandler.ApplyForCreator)
 
-	// --- Admin section ---
+	// --- Admin Section ---
 	admin := protected.Group("/admin")
 	admin.Use(middleware.RequireRole("admin", cfg.Keycloak.ClientID))
 
-	adminHandler := handlers.NewAdminHandler(objectsRepo)
-
 	admin.GET("/stats", adminHandler.Stats)
 	admin.GET("/ping", adminHandler.Ping)
-
 	admin.POST("/applications/:id/approve", adminHandler.ApproveArtistApplication)
 	admin.POST("/objects", adminHandler.CreateArtObject)
 

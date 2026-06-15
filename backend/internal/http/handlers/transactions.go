@@ -1,22 +1,45 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	"ArtoFino/backend/internal/models"
+	"ArtoFino/backend/internal/mongo"
 
 	"github.com/gin-gonic/gin"
 )
 
-// BuyShareInput describes the request body for purchasing an art object share
+// Contracts for safe decoupling
+type MongoTxRepository interface {
+	FindByID(ctx context.Context, idStr string) (*mongo.Object, error)
+}
+
+type PostgresTxRepository interface {
+	Save(ctx context.Context, tx *models.Transaction) error
+}
+
+type TransactionsHandler struct {
+	mongoRepo MongoTxRepository
+	pgRepo    PostgresTxRepository
+}
+
+func NewTransactionsHandler(mongoRepo MongoTxRepository, pgRepo PostgresTxRepository) *TransactionsHandler {
+	return &TransactionsHandler{
+		mongoRepo: mongoRepo,
+		pgRepo:    pgRepo,
+	}
+}
+
 type BuyShareInput struct {
-	ObjectID string  `json:"objectId" binding:"required" example:"64a7b3e1f1d2c3a4b5"`
+	ObjectID string  `json:"objectId" binding:"required" example:"64a7b3e1f1d2c3a4b5777777"`
 	SharePct float64 `json:"sharePct" binding:"required,gte=1,lte=10" example:"5"`
 }
 
-// TransactionResponse describes the result of a successful transaction recorded in Postgres
 type TransactionResponse struct {
-	TransactionID string    `json:"transactionId" example:"tx-abc-999888"`
-	ObjectID      string    `json:"objectId" example:"64a7b3e1f1d2c3a4b5"`
+	TransactionID string    `json:"transactionId" example:"uuid-string-here"`
+	ObjectID      string    `json:"objectId" example:"64a7b3e1f1d2c3a4b5777777"`
 	BuyerID       string    `json:"buyerId" example:"user-buyer-uuid"`
 	SellerID      string    `json:"sellerId" example:"artist-seller-uuid"`
 	SharePct      float64   `json:"sharePct" example:"5"`
@@ -25,25 +48,18 @@ type TransactionResponse struct {
 	CreatedAt     time.Time `json:"createdAt"`
 }
 
-// TransactionsHandler holds dependencies for financial operations
-type TransactionsHandler struct{}
-
-// NewTransactionsHandler creates a new instance of TransactionsHandler
-func NewTransactionsHandler() *TransactionsHandler {
-	return &TransactionsHandler{}
-}
-
 // BuyShare godoc
 // @Summary      Buy a share in an art object
-// @Description  Purchase between 1% and 10% of an art object. Price is locked at the current calculated rate using the linear growth formula.
+// @Description  Purchase a fractional percentage of an art object. Price is locked and calculated dynamically using the live growth formula from MongoDB.
 // @Tags         transactions
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        input body BuyShareInput true "Purchase data"
+// @Param        input body BuyShareInput true "Purchase percentage details"
 // @Success      201 {object} TransactionResponse
 // @Failure      400 {object} map[string]string
-// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
 // @Router       /transactions/buy [post]
 func (h *TransactionsHandler) BuyShare(c *gin.Context) {
 	var input BuyShareInput
@@ -55,47 +71,59 @@ func (h *TransactionsHandler) BuyShare(c *gin.Context) {
 	claims, exists := c.Get("claims")
 	var buyerID string
 	if !exists {
-		buyerID = "mock-buyer-id"
+		// Mock valid UUID string format for constraints if claims don't exist
+		buyerID = "00000000-0000-0000-0000-000000000001"
 	} else {
 		buyerID = claims.(map[string]interface{})["sub"].(string)
 	}
 
-	// 1. Simulating fetching the specific object from MongoDB to get its raw economic parameters
-	// In the next step, this will be: object, err := h.mongoRepo.FindByID(input.ObjectID)
-	mockObjectFromDB := struct {
-		BasePrice       float64
-		Currency        string
-		DailyGrowthRate float64
-		CreatedAt       time.Time
-		ArtistID        string
-	}{
-		BasePrice:       12000.00,                       // For example, this specific artist set 12000
-		Currency:        "CZK",                          // in Czech Korunas
-		DailyGrowthRate: 0.0001,                         // with base 0.01% daily rate
-		CreatedAt:       time.Now().AddDate(0, 0, -100), // published 100 days ago
-		ArtistID:        "artist-specific-uuid",
+	// 1. Fetch asset metadata from MongoDB
+	obj, err := h.mongoRepo.FindByID(c.Request.Context(), input.ObjectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "target art object not found"})
+		return
 	}
 
-	// 2. THE EXACT SAME LIVE FORMULA
-	// We calculate the object's real price at the exact second of the transaction
-	daysPassed := time.Since(mockObjectFromDB.CreatedAt).Hours() / 24
-	currentPrice := mockObjectFromDB.BasePrice * (1 + mockObjectFromDB.DailyGrowthRate*daysPassed)
+	// 2. LIVE ECONOMIC FORMULA EVALUATION
+	daysPassed := time.Since(obj.CreatedAt).Hours() / 24
+	if daysPassed < 0 {
+		daysPassed = 0
+	}
+	currentPrice := obj.BasePrice * (1 + obj.DailyGrowthRate*daysPassed)
 
-	// 3. Calculate how much the buyer must pay for their specific percentage share
+	// 3. Calculate dynamic cost and convert to Cents (int64)
 	amountToPay := currentPrice * (input.SharePct / 100)
+	amountCents := int64(amountToPay * 100)
 
-	// TODO: Execute transactional database steps via Postgres ACID:
-	// - Ensure total shares for this object do not exceed 100%
-	// - Update ownership state, insert transaction record
+	// Fallback mock for seller if owner_user_id is not a valid UUID in test state
+	sellerID := obj.OwnerUserID
+	if sellerID == "" {
+		sellerID = "00000000-0000-0000-0000-000000000002"
+	}
+
+	// 4. Build and save database transaction record
+	dbTx := &models.Transaction{
+		ObjectID:    input.ObjectID,
+		FromUserID:  sellerID, // From whom (Seller/Artist)
+		ToUserID:    buyerID,  // To whom (Buyer)
+		AmountCents: amountCents,
+		SharePct:    input.SharePct,
+		Currency:    obj.Currency,
+	}
+
+	if err := h.pgRepo.Save(c.Request.Context(), dbTx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "financial ledger recording failed"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, TransactionResponse{
-		TransactionID: "tx-live-calculated-111",
-		ObjectID:      input.ObjectID,
-		BuyerID:       buyerID,
-		SellerID:      mockObjectFromDB.ArtistID,
-		SharePct:      input.SharePct,
-		AmountPaid:    amountToPay, // Locked and calculated dynamically!
-		Currency:      mockObjectFromDB.Currency,
-		CreatedAt:     time.Now(),
+		TransactionID: dbTx.ID, // GORM will populate this via gen_random_uuid()
+		ObjectID:      dbTx.ObjectID,
+		BuyerID:       dbTx.ToUserID,
+		SellerID:      dbTx.FromUserID,
+		SharePct:      dbTx.SharePct,
+		AmountPaid:    float64(dbTx.AmountCents) / 100, // Return as normal standard float to API
+		Currency:      dbTx.Currency,
+		CreatedAt:     dbTx.CreatedAt,
 	})
 }
