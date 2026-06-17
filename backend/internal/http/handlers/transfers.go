@@ -1,37 +1,52 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"time"
+
+	"ArtoFino/backend/internal/models"
+	"ArtoFino/backend/internal/mongo"
 
 	"github.com/gin-gonic/gin"
 )
 
-// TransferRequestInput describes the payload to request an art object for temporary use
+// Interfaces for clean isolation
+type MongoTransferRepository interface {
+	FindByID(ctx context.Context, idStr string) (*mongo.Object, error)
+}
+
+type PostgresTransferRepository interface {
+	Create(ctx context.Context, transfer *models.Transfer) error
+	FindByID(ctx context.Context, id string) (*models.Transfer, error)
+	Update(ctx context.Context, transfer *models.Transfer) error
+}
+
+type TransfersHandler struct {
+	mongoRepo MongoTransferRepository
+	pgRepo    PostgresTransferRepository
+}
+
+// NewTransfersHandler injects repositories into the logistics module
+func NewTransfersHandler(mongoRepo MongoTransferRepository, pgRepo PostgresTransferRepository) *TransfersHandler {
+	return &TransfersHandler{
+		mongoRepo: mongoRepo,
+		pgRepo:    pgRepo,
+	}
+}
+
 type TransferRequestInput struct {
-	ObjectID     string `json:"objectId" binding:"required" example:"64a7b3e1f1d2c3a4b5"`
-	EventDetails string `json:"eventDetails" binding:"required" example:"Corporate pop-up exhibition or apartment art party"`
-	DurationDays int    `json:"durationDays" binding:"required,gte=1" example:"7"`
+	ObjectID    string `json:"objectId" binding:"required" example:"64a7b3e1f1d2c3a4b5777777"`
+	Destination string `json:"destination" binding:"required" example:"Prague National Gallery, Hall 4"`
 }
 
-// TransferRequestResponse describes the created logistics transfer state
 type TransferRequestResponse struct {
-	TransferID   string    `json:"transferId" example:"tr-999111"`
-	ObjectID     string    `json:"objectId" example:"64a7b3e1f1d2c3a4b5"`
-	RequesterID  string    `json:"requesterId" example:"partner-host-uuid"`
-	FromHolderID string    `json:"fromHolderId" example:"partner-current-owner-uuid"`
-	Status       string    `json:"status" example:"pending"` // pending, approved, rejected, completed
-	EventDetails string    `json:"eventDetails" example:"Corporate pop-up exhibition or apartment art party"`
-	ExpiresAt    time.Time `json:"expiresAt"`
-	CreatedAt    time.Time `json:"createdAt"`
-}
-
-// TransfersHandler holds dependencies for art object physical movements
-type TransfersHandler struct{}
-
-// NewTransfersHandler creates a new instance of TransfersHandler
-func NewTransfersHandler() *TransfersHandler {
-	return &TransfersHandler{}
+	TransferID  string    `json:"transferId" example:"uuid-string"`
+	ObjectID    string    `json:"objectId" example:"64a7b3e1f1d2c3a4b5777777"`
+	RequesterID string    `json:"requesterId" example:"partner-host-uuid"`
+	Destination string    `json:"destination" example:"Prague National Gallery, Hall 4"`
+	Status      string    `json:"status" example:"pending"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // RequestTransfer godoc
@@ -44,7 +59,8 @@ func NewTransfersHandler() *TransfersHandler {
 // @Param        input body TransferRequestInput true "Transfer request details"
 // @Success      201 {object} TransferRequestResponse
 // @Failure      400 {object} map[string]string
-// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
 // @Router       /transfers/request [post]
 func (h *TransfersHandler) RequestTransfer(c *gin.Context) {
 	var input TransferRequestInput
@@ -53,41 +69,50 @@ func (h *TransfersHandler) RequestTransfer(c *gin.Context) {
 		return
 	}
 
-	// Extract Requester ID from Keycloak JWT tokens
 	claims, exists := c.Get("claims")
 	var requesterID string
 	if !exists {
-		requesterID = "mock-host-partner-id"
+		requesterID = "00000000-0000-0000-0000-000000000001"
 	} else {
 		requesterID = claims.(map[string]interface{})["sub"].(string)
 	}
 
-	// 1. Simulating fetching the current asset state from MongoDB
-	// We need to know who currently physically holds the painting (FromHolderID)
-	mockCurrentHolderID := "partner-9876" // Currently sitting at this partner's location
-
-	// 2. Logic: Ensure the requester is not trying to request from themselves
-	if requesterID == mockCurrentHolderID && exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "You already hold this art object"})
+	// 1. Verify that the asset exists in MongoDB
+	obj, err := h.mongoRepo.FindByID(c.Request.Context(), input.ObjectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "art object not found"})
 		return
 	}
 
-	// TODO: Save to Postgres log infrastructure:
-	// INSERT INTO art_object_transfers (object_id, requester_id, from_holder_id, status, event_details) ...
+	// 2. Prevent the owner from requesting their own physical asset
+	if obj.OwnerUserID == requesterID && exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You already physically hold or own this art object"})
+		return
+	}
+
+	// 3. Persist the pending logistics state inside PostgreSQL
+	dbTransfer := &models.Transfer{
+		ObjectID:    input.ObjectID,
+		RequesterID: requesterID,
+		Destination: input.Destination,
+		Status:      "pending",
+	}
+
+	if err := h.pgRepo.Create(c.Request.Context(), dbTransfer); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save transfer request"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, TransferRequestResponse{
-		TransferID:   "tr-mock-uuid-888999",
-		ObjectID:     input.ObjectID,
-		RequesterID:  requesterID,
-		FromHolderID: mockCurrentHolderID,
-		Status:       "pending",
-		EventDetails: input.EventDetails,
-		ExpiresAt:    time.Now().AddDate(0, 0, 3), // Request open for 3 days
-		CreatedAt:    time.Now(),
+		TransferID:  dbTransfer.ID, // Filled automatically via gen_random_uuid()
+		ObjectID:    dbTransfer.ObjectID,
+		RequesterID: dbTransfer.RequesterID,
+		Destination: dbTransfer.Destination,
+		Status:      dbTransfer.Status,
+		CreatedAt:   dbTransfer.CreatedAt,
 	})
 }
 
-// TransferApprovalResponse describes the result of a transfer request being approved by the holder
 type TransferApprovalResponse struct {
 	TransferID string    `json:"transferId" example:"tr-888999"`
 	Status     string    `json:"status" example:"approved"`
@@ -102,19 +127,32 @@ type TransferApprovalResponse struct {
 // @Security     BearerAuth
 // @Param        id   path      string  true  "Transfer ID"
 // @Success      200 {object} TransferApprovalResponse
-// @Failure      400 {object} map[string]string
-// @Failure      401 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
 // @Router       /transfers/{id}/approve [post]
 func (h *TransfersHandler) ApproveTransfer(c *gin.Context) {
 	transferID := c.Param("id")
 
-	// TODO: Verify via Postgres that the current authenticated user matches 'FromHolderID'
-	// TODO: Update transfer record status to 'approved'
-	// TODO: Trigger dynamic dailyGrowthRate recalculation inside MongoDB for this object
+	// 1. Find the logistics entity inside PostgreSQL
+	transfer, err := h.pgRepo.FindByID(c.Request.Context(), transferID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "transfer request not found"})
+		return
+	}
+
+	// 2. Mutate state parameters
+	transfer.Status = "approved"
+	transfer.UpdatedAt = time.Now()
+
+	// 3. Save updates into relational engine
+	if err := h.pgRepo.Update(c.Request.Context(), transfer); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve transfer record"})
+		return
+	}
 
 	c.JSON(http.StatusOK, TransferApprovalResponse{
-		TransferID: transferID,
-		Status:     "approved",
-		ApprovedAt: time.Now(),
+		TransferID: transfer.ID,
+		Status:     transfer.Status,
+		ApprovedAt: transfer.UpdatedAt,
 	})
 }

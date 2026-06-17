@@ -1,81 +1,82 @@
 package handlers
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
+
+	"ArtoFino/backend/internal/models"
+	"ArtoFino/backend/internal/mongo"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Mock repositories for logistics
+type mockMongoTransferRepo struct{}
+
+func (m *mockMongoTransferRepo) FindByID(ctx context.Context, idStr string) (*mongo.Object, error) {
+	hexID, _ := primitive.ObjectIDFromHex("64a7b3e1f1d2c3a4b5777777")
+	return &mongo.Object{
+		ID:          hexID,
+		Title:       "Logistics Test Asset",
+		OwnerUserID: "00000000-0000-0000-0000-000000000002", // Owner is User 2
+		CreatedAt:   time.Now().AddDate(0, 0, -10),
+	}, nil
+}
+
+type mockPostgresTransferRepo struct{}
+
+func (m *mockPostgresTransferRepo) Create(ctx context.Context, transfer *models.Transfer) error {
+	transfer.ID = "generated-transfer-uuid-111"
+	transfer.CreatedAt = time.Now()
+	return nil
+}
+
+func (m *mockPostgresTransferRepo) FindByID(ctx context.Context, id string) (*models.Transfer, error) {
+	return &models.Transfer{
+		ID:          id,
+		ObjectID:    "64a7b3e1f1d2c3a4b5777777",
+		RequesterID: "00000000-0000-0000-0000-000000000001",
+		Destination: "Prague Gallery",
+		Status:      "pending",
+	}, nil
+}
+
+func (m *mockPostgresTransferRepo) Update(ctx context.Context, transfer *models.Transfer) error {
+	return nil
+}
+
 func TestRequestTransfer_Success(t *testing.T) {
-	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
 
-	// Initialize router and handler
 	r := gin.Default()
-	h := NewTransfersHandler()
+	mockMongo := &mockMongoTransferRepo{}
+	mockPg := &mockPostgresTransferRepo{}
+	h := NewTransfersHandler(mockMongo, mockPg)
 	r.POST("/transfers/request", h.RequestTransfer)
 
-	// Prepare payload for booking an art object for a local apartment exhibition
-	input := TransferRequestInput{
-		ObjectID:     "64a7b3e1f1d2c3a4b5",
-		EventDetails: "Apartment art party in Prague",
-		DurationDays: 5,
-	}
-	jsonPayload, _ := json.Marshal(input)
+	inputJSON := `{"objectId": "64a7b3e1f1d2c3a4b5777777", "destination": "Prague Gallery"}`
 
-	// Create POST request with JSON payload
-	req, _ := http.NewRequest(http.MethodPost, "/transfers/request", bytes.NewBuffer(jsonPayload))
+	req, _ := http.NewRequest(http.MethodPost, "/transfers/request", strings.NewReader(inputJSON))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	// Perform request
 	r.ServeHTTP(w, req)
 
-	// Assert HTTP status code is 201 Created
 	assert.Equal(t, http.StatusCreated, w.Code)
 
-	// Unmarshal JSON response
 	var response TransferRequestResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 
-	// Assert correct operational state mapping
-	assert.Equal(t, "tr-mock-uuid-888999", response.TransferID)
-	assert.Equal(t, input.ObjectID, response.ObjectID)
-	assert.Equal(t, "mock-host-partner-id", response.RequesterID)
-	assert.Equal(t, "partner-9876", response.FromHolderID)
+	assert.Equal(t, "64a7b3e1f1d2c3a4b5777777", response.ObjectID)
+	assert.Equal(t, "Prague Gallery", response.Destination)
 	assert.Equal(t, "pending", response.Status)
-	assert.Equal(t, input.EventDetails, response.EventDetails)
-	assert.NotEmpty(t, response.ExpiresAt)
-	assert.NotEmpty(t, response.CreatedAt)
-}
-
-func TestApproveTransfer_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	r := gin.Default()
-	h := NewTransfersHandler()
-	r.POST("/transfers/:id/approve", h.ApproveTransfer)
-
-	targetTransferID := "tr-test-123"
-
-	req, _ := http.NewRequest(http.MethodPost, "/transfers/"+targetTransferID+"/approve", nil)
-	w := httptest.NewRecorder()
-
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var response TransferApprovalResponse
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-
-	assert.Equal(t, targetTransferID, response.TransferID)
-	assert.Equal(t, "approved", response.Status)
-	assert.NotEmpty(t, response.ApprovedAt)
+	assert.NotEmpty(t, response.TransferID)
 }

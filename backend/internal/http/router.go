@@ -40,12 +40,13 @@ func NewRouter(
 
 	// 2. PostgreSQL Setup
 	transactionsPostgresRepo := pgrepo.NewTransactionsRepository(pg)
+	transfersPostgresRepo := pgrepo.NewTransfersRepository(pg)
 
 	// --- Initialize Handlers with Dependencies ---
 	objectsHandler := handlers.NewObjectsHandler(objectsRepo)
 	usersHandler := handlers.NewUsersHandler()
 	transactionsHandler := handlers.NewTransactionsHandler(objectsRepo, transactionsPostgresRepo)
-	transfersHandler := handlers.NewTransfersHandler()
+	transfersHandler := handlers.NewTransfersHandler(objectsRepo, transfersPostgresRepo)
 	authorsHandler := handlers.NewAuthorsHandler()
 	adminHandler := handlers.NewAdminHandler(objectsRepo)
 

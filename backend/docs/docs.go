@@ -305,8 +305,17 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -348,8 +357,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/handlers.TransferApprovalResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -357,8 +366,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -568,23 +577,17 @@ const docTemplate = `{
         "handlers.TransferRequestInput": {
             "type": "object",
             "required": [
-                "durationDays",
-                "eventDetails",
+                "destination",
                 "objectId"
             ],
             "properties": {
-                "durationDays": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "example": 7
-                },
-                "eventDetails": {
+                "destination": {
                     "type": "string",
-                    "example": "Corporate pop-up exhibition or apartment art party"
+                    "example": "Prague National Gallery, Hall 4"
                 },
                 "objectId": {
                     "type": "string",
-                    "example": "64a7b3e1f1d2c3a4b5"
+                    "example": "64a7b3e1f1d2c3a4b5777777"
                 }
             }
         },
@@ -594,33 +597,25 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "eventDetails": {
+                "destination": {
                     "type": "string",
-                    "example": "Corporate pop-up exhibition or apartment art party"
-                },
-                "expiresAt": {
-                    "type": "string"
-                },
-                "fromHolderId": {
-                    "type": "string",
-                    "example": "partner-current-owner-uuid"
+                    "example": "Prague National Gallery, Hall 4"
                 },
                 "objectId": {
                     "type": "string",
-                    "example": "64a7b3e1f1d2c3a4b5"
+                    "example": "64a7b3e1f1d2c3a4b5777777"
                 },
                 "requesterId": {
                     "type": "string",
                     "example": "partner-host-uuid"
                 },
                 "status": {
-                    "description": "pending, approved, rejected, completed",
                     "type": "string",
                     "example": "pending"
                 },
                 "transferId": {
                     "type": "string",
-                    "example": "tr-999111"
+                    "example": "uuid-string"
                 }
             }
         },

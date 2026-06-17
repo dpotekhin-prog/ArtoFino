@@ -127,45 +127,34 @@ definitions:
     type: object
   handlers.TransferRequestInput:
     properties:
-      durationDays:
-        example: 7
-        minimum: 1
-        type: integer
-      eventDetails:
-        example: Corporate pop-up exhibition or apartment art party
+      destination:
+        example: Prague National Gallery, Hall 4
         type: string
       objectId:
-        example: 64a7b3e1f1d2c3a4b5
+        example: 64a7b3e1f1d2c3a4b5777777
         type: string
     required:
-    - durationDays
-    - eventDetails
+    - destination
     - objectId
     type: object
   handlers.TransferRequestResponse:
     properties:
       createdAt:
         type: string
-      eventDetails:
-        example: Corporate pop-up exhibition or apartment art party
-        type: string
-      expiresAt:
-        type: string
-      fromHolderId:
-        example: partner-current-owner-uuid
+      destination:
+        example: Prague National Gallery, Hall 4
         type: string
       objectId:
-        example: 64a7b3e1f1d2c3a4b5
+        example: 64a7b3e1f1d2c3a4b5777777
         type: string
       requesterId:
         example: partner-host-uuid
         type: string
       status:
-        description: pending, approved, rejected, completed
         example: pending
         type: string
       transferId:
-        example: tr-999111
+        example: uuid-string
         type: string
     type: object
   handlers.UserProfileResponse:
@@ -395,14 +384,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handlers.TransferApprovalResponse'
-        "400":
-          description: Bad Request
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
-        "401":
-          description: Unauthorized
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
@@ -437,8 +426,14 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "401":
-          description: Unauthorized
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
