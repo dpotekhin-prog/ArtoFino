@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"ArtoFino/backend/internal/models"
 
@@ -34,4 +35,17 @@ func (r *TransfersRepository) FindByID(ctx context.Context, id string) (*models.
 // Update saves modified transfer fields (like status)
 func (r *TransfersRepository) Update(ctx context.Context, transfer *models.Transfer) error {
 	return r.db.WithContext(ctx).Save(transfer).Error
+}
+
+// GetUserBalance retrieves the current share balance for a specific user and object
+func (r *TransfersRepository) GetUserBalance(ctx context.Context, userID string, objectID string) (*models.ArtShareBalance, error) {
+	var balance models.ArtShareBalance
+	err := r.db.WithContext(ctx).Where("user_id = ? AND object_id = ?", userID, objectID).First(&balance).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &balance, nil
 }

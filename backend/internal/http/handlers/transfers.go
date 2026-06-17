@@ -20,6 +20,7 @@ type PostgresTransferRepository interface {
 	Create(ctx context.Context, transfer *models.Transfer) error
 	FindByID(ctx context.Context, id string) (*models.Transfer, error)
 	Update(ctx context.Context, transfer *models.Transfer) error
+	GetUserBalance(ctx context.Context, userID string, objectID string) (*models.ArtShareBalance, error)
 }
 
 type TransfersHandler struct {
@@ -59,6 +60,7 @@ type TransferRequestResponse struct {
 // @Param        input body TransferRequestInput true "Transfer request details"
 // @Success      201 {object} TransferRequestResponse
 // @Failure      400 {object} map[string]string
+// @Failure      403 {object} map[string]string
 // @Failure      404 {object} map[string]string
 // @Failure      500 {object} map[string]string
 // @Router       /transfers/request [post]
@@ -90,7 +92,19 @@ func (h *TransfersHandler) RequestTransfer(c *gin.Context) {
 		return
 	}
 
-	// 3. Persist the pending logistics state inside PostgreSQL
+	// 3. Verify that the user owns active fraction shares of this artwork in PostgreSQL
+	balance, err := h.pgRepo.GetUserBalance(c.Request.Context(), requesterID, input.ObjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify user shares balance"})
+		return
+	}
+
+	if balance == nil || balance.SharePct <= 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied: you must own shares of this art piece to request logistics"})
+		return
+	}
+
+	// 4. Persist the pending logistics state inside PostgreSQL
 	dbTransfer := &models.Transfer{
 		ObjectID:    input.ObjectID,
 		RequesterID: requesterID,
@@ -104,7 +118,7 @@ func (h *TransfersHandler) RequestTransfer(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, TransferRequestResponse{
-		TransferID:  dbTransfer.ID, // Filled automatically via gen_random_uuid()
+		TransferID:  dbTransfer.ID,
 		ObjectID:    dbTransfer.ObjectID,
 		RequesterID: dbTransfer.RequesterID,
 		Destination: dbTransfer.Destination,

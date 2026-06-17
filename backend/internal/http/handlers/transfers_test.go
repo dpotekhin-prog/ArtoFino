@@ -25,12 +25,14 @@ func (m *mockMongoTransferRepo) FindByID(ctx context.Context, idStr string) (*mo
 	return &mongo.Object{
 		ID:          hexID,
 		Title:       "Logistics Test Asset",
-		OwnerUserID: "00000000-0000-0000-0000-000000000002", // Owner is User 2
+		OwnerUserID: "00000000-0000-0000-0000-000000000002",
 		CreatedAt:   time.Now().AddDate(0, 0, -10),
 	}, nil
 }
 
-type mockPostgresTransferRepo struct{}
+type mockPostgresTransferRepo struct {
+	mockBalanceSharePct float64
+}
 
 func (m *mockPostgresTransferRepo) Create(ctx context.Context, transfer *models.Transfer) error {
 	transfer.ID = "generated-transfer-uuid-111"
@@ -52,12 +54,23 @@ func (m *mockPostgresTransferRepo) Update(ctx context.Context, transfer *models.
 	return nil
 }
 
+func (m *mockPostgresTransferRepo) GetUserBalance(ctx context.Context, userID string, objectID string) (*models.ArtShareBalance, error) {
+	if m.mockBalanceSharePct <= 0 {
+		return nil, nil
+	}
+	return &models.ArtShareBalance{
+		UserID:   userID,
+		ObjectID: objectID,
+		SharePct: m.mockBalanceSharePct,
+	}, nil
+}
+
 func TestRequestTransfer_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.Default()
 	mockMongo := &mockMongoTransferRepo{}
-	mockPg := &mockPostgresTransferRepo{}
+	mockPg := &mockPostgresTransferRepo{mockBalanceSharePct: 10.0} // User owns 10% of the artwork
 	h := NewTransfersHandler(mockMongo, mockPg)
 	r.POST("/transfers/request", h.RequestTransfer)
 
@@ -79,4 +92,24 @@ func TestRequestTransfer_Success(t *testing.T) {
 	assert.Equal(t, "Prague Gallery", response.Destination)
 	assert.Equal(t, "pending", response.Status)
 	assert.NotEmpty(t, response.TransferID)
+}
+
+func TestRequestTransfer_Forbidden_NoShares(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.Default()
+	mockMongo := &mockMongoTransferRepo{}
+	mockPg := &mockPostgresTransferRepo{mockBalanceSharePct: 0.0} // User has no shares
+	h := NewTransfersHandler(mockMongo, mockPg)
+	r.POST("/transfers/request", h.RequestTransfer)
+
+	inputJSON := `{"objectId": "64a7b3e1f1d2c3a4b5777777", "destination": "Prague Gallery"}`
+
+	req, _ := http.NewRequest(http.MethodPost, "/transfers/request", strings.NewReader(inputJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }

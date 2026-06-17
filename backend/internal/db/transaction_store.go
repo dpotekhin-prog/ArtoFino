@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -12,23 +11,16 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type TransactionsRepository struct {
+type TransactionStore struct {
 	db *gorm.DB
 }
 
-// NewTransactionsRepository initializes Postgres repository for financial transactions
-func NewTransactionsRepository(db *gorm.DB) *TransactionsRepository {
-	return &TransactionsRepository{db: db}
-}
-
-// Save inserts a new transaction record into PostgreSQL
-func (r *TransactionsRepository) Save(ctx context.Context, tx *models.Transaction) error {
-	return r.db.WithContext(ctx).Create(tx).Error
+func NewTransactionStore(db *gorm.DB) *TransactionStore {
+	return &TransactionStore{db: db}
 }
 
 // ExecutePurchase atomically transfers share percentages and logs the transaction ledger
-func (r *TransactionsRepository) ExecutePurchase(
-	ctx context.Context,
+func (s *TransactionStore) ExecutePurchase(
 	objectID string,
 	fromUserID string,
 	toUserID string,
@@ -46,7 +38,7 @@ func (r *TransactionsRepository) ExecutePurchase(
 
 	var txRecord models.Transaction
 
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var sellerBalance models.ArtShareBalance
 
 		// 1. Lock seller balance row to prevent race conditions (SELECT ... FOR UPDATE)

@@ -8,7 +8,7 @@ Backend service for **ArtoFino** — a platform for digital art tokenization, fr
 
 Dual-storage strategy balancing transactional integrity with metadata flexibility:
 
-- **PostgreSQL (GORM):** Source of truth for ledger states, physical asset logistics, user profiles, and creator applications. Enforces relational FK constraints and ACID transactions.
+- **PostgreSQL (GORM):** Source of truth for ledger states, physical asset logistics, user profiles, creator applications, and share balances. Enforces relational FK constraints and ACID transactions.
 - **MongoDB:** Stores semi-structured art asset metadata, dynamic price evaluation configs, and history timelines.
 
 ### Data Flow
@@ -39,7 +39,7 @@ Dual-storage strategy balancing transactional integrity with metadata flexibilit
 ## Features
 
 - **Onboarding Pipeline:** Artists submit applications that flow through an admin review state machine.
-- **Fractional Shares Engine:** Ledger operations tracking granular ownership tokens for physical artwork.
+- **Fractional Shares Engine:** Atomic `ExecutePurchase` transfers share percentages between users in a single DB transaction — locks the seller's `ArtShareBalance` row with `SELECT FOR UPDATE`, deducts from the seller, upserts to the buyer, and appends a `Transaction` history record.
 - **Logistics Tracking:** State-machine for monitoring high-value physical goods in transit to/from art vaults.
 - **OpenAPI Docs:** Auto-refreshing Swagger spec linked to handler annotations.
 
@@ -120,7 +120,7 @@ Swagger UI: [http://localhost:9000/swagger/index.html](http://localhost:9000/swa
 | Admin | `/admin/ping` | `GET` | Admin | Admin middleware health check |
 | Authors | `/authors/apply` | `POST` | Token | Submit portfolio and bio for verification |
 | Transactions | `/transactions/buy` | `POST` | Token | Purchase fractional asset shares |
-| Transfers | `/transfers/request` | `POST` | Token | Register a physical delivery request |
+| Transfers | `/transfers/request` | `POST` | Token | Register a physical delivery request (requires active share ownership — 403 if none) |
 | Transfers | `/transfers/:id/approve` | `POST` | Admin | Advance asset escrow milestone |
 | Users | `/users/me` | `GET` | Token | Get current user profile from token context |
 | System | `/hc` | `GET` | Public | Health check — database pool status |
@@ -132,5 +132,6 @@ Swagger UI: [http://localhost:9000/swagger/index.html](http://localhost:9000/swa
 ## Security
 
 1. **JWT Middleware:** Validates bearer tokens against Keycloak JWKS endpoints and injects a verified user UUID into request context.
-2. **CORS Policy:** Restricts cross-origin requests to configured frontend origins.
-3. **Panic Recovery:** Intercepts panics, logs structured output, and prevents internal errors from leaking to clients.
+2. **Share Ownership Guard:** `POST /transfers/request` verifies the requester holds an active `ArtShareBalance > 0` for the target object before creating a logistics entry. Returns `403` otherwise.
+3. **CORS Policy:** Restricts cross-origin requests to configured frontend origins.
+4. **Panic Recovery:** Intercepts panics, logs structured output, and prevents internal errors from leaking to clients.
