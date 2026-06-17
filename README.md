@@ -13,19 +13,26 @@ The system utilizes a dual-storage strategy to balance strict transactional inte
 
 ### Data Flow Overview
 
-START_CODE_TEXT
-[Client Requests] -> [Nginx/CORS Layer] -> [Keycloak Auth Middleware] -> [Gin Router]
-                                                                            |
-                                           +--------------------------------+--------------------------------+
-                                           |                                                                 |
-                                           v                                                                 v
-                               [PostgreSQL Relational Storage]                                   [MongoDB Document Storage]
-                               - User Metadata & Profiles                                        - Art Piece Structures & Specs
-                               - Creator Applications Ledger                                     - Dynamic Price Matrix Configurations
-                               - Custody & Transfer Contracts                                    - Media & Asset Render References
-END_CODE
-
----
+```text
+       [ Client Request (Frontend / Mobile) ]
+                         │
+                         ▼
+             [ Nginx / Reverse Proxy ]
+                         │
+                         ▼
+        [ Keycloak Authentication Middleware ]
+         (Checks JWT & populates User Context)
+                         │
+                         ▼
+               [ Gin Engine Router ]
+          (Matches URL to HTTP Handlers)
+                         │
+        ┌────────────────┴────────────────┐
+        ▼                                 ▼
+ [ PostgreSQL (via GORM) ]       [ MongoDB Go Driver ]
+  - User Profiles Metadata        - Art Object Dynamic Specs
+  - Creator Application States    - Complex Media Asset Arrays
+  - Relational Escrow Ledgers     - Performance Pricing Matrices
 
 ## 🌟 Core Features & Workflow Chains
 
@@ -51,28 +58,36 @@ END_CODE
 
 Before spinning up the service, populate a `.env` file within the backend root folder with the following variables:
 
-START_CODE_ENV
 # Server Run Profile
 SERVER_PORT=9000
+
 GIN_MODE=debug
 
 # Relational Infrastructure
 POSTGRES_HOST=localhost
+
 POSTGRES_PORT=5432
+
 POSTGRES_USER=artofino_admin
+
 POSTGRES_PASSWORD=secure_postgres_pass
+
 POSTGRES_DB=artofino_ledger
+
 POSTGRES_SSLMODE=disable
 
 # Document Infrastructure
 MONGO_URI=mongodb://localhost:27017
+
 MONGO_DB_NAME=artofino_metadata
 
 # Identity Management (Keycloak Integration)
 KEYCLOAK_REALM=artofino-platform
+
 KEYCLOAK_AUTH_SERVER_URL=http://localhost:8080/auth
+
 KEYCLOAK_CLIENT_ID=artofino-backend-api
-END_CODE
+
 
 ---
 
