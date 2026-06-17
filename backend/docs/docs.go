@@ -16,6 +16,58 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/applications/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allows an Admin to review and approve a pending author application inside PostgreSQL.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Approve an author onboarding request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.AdminApplicationApprovalResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/objects": {
             "post": {
                 "security": [
@@ -61,8 +113,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -103,8 +155,8 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "202": {
-                        "description": "Accepted",
+                    "201": {
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/handlers.CreatorApplicationResponse"
                         }
@@ -118,8 +170,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -401,6 +453,30 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.AdminApplicationApprovalResponse": {
+            "type": "object",
+            "properties": {
+                "applicationId": {
+                    "type": "string",
+                    "example": "app-555666"
+                },
+                "roleAssigned": {
+                    "type": "string",
+                    "example": "artist"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "approved"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "user-keycloak-uuid"
+                }
+            }
+        },
         "handlers.BuyShareInput": {
             "type": "object",
             "required": [
@@ -490,7 +566,7 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "['https://instagram.com/artist_handle']"
+                        "[\"https://instagram.com/artist_handle\"]"
                     ]
                 }
             }
@@ -500,7 +576,7 @@ const docTemplate = `{
             "properties": {
                 "applicationId": {
                     "type": "string",
-                    "example": "app-111222"
+                    "example": "uuid-string"
                 },
                 "bio": {
                     "type": "string"
@@ -512,7 +588,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "description": "pending, approved, rejected",
                     "type": "string",
                     "example": "pending"
                 },

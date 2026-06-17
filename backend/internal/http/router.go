@@ -41,14 +41,15 @@ func NewRouter(
 	// 2. PostgreSQL Setup
 	transactionsPostgresRepo := pgrepo.NewTransactionsRepository(pg)
 	transfersPostgresRepo := pgrepo.NewTransfersRepository(pg)
+	authorAppRepo := pgrepo.NewAuthorApplicationsRepository(pg)
 
 	// --- Initialize Handlers with Dependencies ---
 	objectsHandler := handlers.NewObjectsHandler(objectsRepo)
 	usersHandler := handlers.NewUsersHandler()
 	transactionsHandler := handlers.NewTransactionsHandler(objectsRepo, transactionsPostgresRepo)
 	transfersHandler := handlers.NewTransfersHandler(objectsRepo, transfersPostgresRepo)
-	authorsHandler := handlers.NewAuthorsHandler()
-	adminHandler := handlers.NewAdminHandler(objectsRepo)
+	authorsHandler := handlers.NewAuthorsHandler(authorAppRepo)
+	adminHandler := handlers.NewAdminHandler(objectsRepo, authorAppRepo)
 
 	// --- Public Routes ---
 	r.GET("/objects/:id", objectsHandler.GetArtObject)

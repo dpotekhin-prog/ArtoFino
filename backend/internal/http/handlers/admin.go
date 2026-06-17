@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"ArtoFino/backend/internal/models"
 	"ArtoFino/backend/internal/mongo"
 
 	"github.com/gin-gonic/gin"
@@ -15,13 +16,23 @@ type MongoAdminRepository interface {
 	Create(ctx context.Context, obj *mongo.Object) error
 }
 
-type AdminHandler struct {
-	mongoRepo MongoAdminRepository
+// AdminAuthorApplicationsRepo defines the contract for GORM Author applications management
+type AdminAuthorApplicationsRepo interface {
+	FindByID(ctx context.Context, id string) (*models.AuthorApplication, error)
+	Update(ctx context.Context, app *models.AuthorApplication) error
 }
 
-// NewAdminHandler initializes AdminHandler with Mongo repository dependency
-func NewAdminHandler(mongoRepo MongoAdminRepository) *AdminHandler {
-	return &AdminHandler{mongoRepo: mongoRepo}
+type AdminHandler struct {
+	mongoRepo MongoAdminRepository
+	appRepo   AdminAuthorApplicationsRepo // Подключили Postgres-репозиторий заявок
+}
+
+// NewAdminHandler initializes AdminHandler according to Variant A (Explicit DI)
+func NewAdminHandler(mongoRepo MongoAdminRepository, appRepo AdminAuthorApplicationsRepo) *AdminHandler {
+	return &AdminHandler{
+		mongoRepo: mongoRepo,
+		appRepo:   appRepo,
+	}
 }
 
 type CreateObjectInput struct {
@@ -65,14 +76,44 @@ type AdminApplicationApprovalResponse struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
+// ApproveArtistApplication godoc
+// @Summary      Approve an author onboarding request
+// @Description  Allows an Admin to review and approve a pending author application inside PostgreSQL.
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "Application ID"
+// @Success      200 {object} AdminApplicationApprovalResponse
+// @Failure      404 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /admin/applications/{id}/approve [post]
 func (h *AdminHandler) ApproveArtistApplication(c *gin.Context) {
 	appID := c.Param("id")
+
+	// 1. Извлекаем реальную заявку из PostgreSQL
+	app, err := h.appRepo.FindByID(c.Request.Context(), appID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "author application not found"})
+		return
+	}
+
+	// 2. Мутируем статус на approved
+	app.Status = "approved"
+	app.UpdatedAt = time.Now()
+
+	// 3. Сохраняем изменения в реляционную БД
+	if err := h.appRepo.Update(c.Request.Context(), app); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update application status"})
+		return
+	}
+
+	// Отдаем красивый оригинальный JSON-ответ фронтенду
 	c.JSON(http.StatusOK, AdminApplicationApprovalResponse{
-		ApplicationID: appID,
-		UserID:        "mock-user-applicant-id",
-		Status:        "approved",
+		ApplicationID: app.ID,
+		UserID:        app.UserID,
+		Status:        app.Status,
 		RoleAssigned:  "artist",
-		UpdatedAt:     time.Now(),
+		UpdatedAt:     app.UpdatedAt,
 	})
 }
 
@@ -86,7 +127,7 @@ func (h *AdminHandler) ApproveArtistApplication(c *gin.Context) {
 // @Param        input body CreateObjectInput true "Art Object configuration state"
 // @Success      201 {object} mongo.Object
 // @Failure      400 {object} map[string]string
-// @Failure      401 {object} map[string]string
+// @Failure      500 {object} map[string]string
 // @Router       /admin/objects [post]
 func (h *AdminHandler) CreateArtObject(c *gin.Context) {
 	var input CreateObjectInput
@@ -103,7 +144,7 @@ func (h *AdminHandler) CreateArtObject(c *gin.Context) {
 		Currency:        input.Currency,
 		DailyGrowthRate: input.DailyGrowthRate,
 		OwnerUserID:     input.ArtistID,
-		CurrentHolderID: input.ArtistID, // Initial holder is the artist creator
+		CurrentHolderID: input.ArtistID,
 	}
 
 	if err := h.mongoRepo.Create(c.Request.Context(), newObj); err != nil {

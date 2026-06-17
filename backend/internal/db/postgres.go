@@ -20,7 +20,7 @@ func ConnectPostgres(dsn string) (*gorm.DB, error) {
 
 	// Заставляем GORM автоматически создать таблицу transactions, если её ещё нет
 	log.Println("Running PostgreSQL database migrations...")
-	err = db.AutoMigrate(&models.Transaction{}, &models.Transfer{})
+	err = db.AutoMigrate(&models.Transaction{}, &models.Transfer{}, &models.AuthorApplication{})
 	if err != nil {
 		return nil, err
 	}
